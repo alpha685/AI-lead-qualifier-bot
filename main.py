@@ -1,4 +1,4 @@
-import streamlit as st
+import streamlit as st 
 
 # MUST be first Streamlit command
 st.set_page_config(page_title="🤖 AI Lead Qualifier Bot (Demo)")
@@ -40,10 +40,16 @@ if submit:
             }
 
             try:
-                response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload)
-                result = response.json()
-                output = result['choices'][0]['message']['content']
-                st.success("✅ Result:")
-                st.write(output)
+               response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload)
+               result = response.json()
+
+               if "choices" not in result:
+                   st.error(f"API Error: {result.get('error', result)}")
+               else:
+                   output = result['choices'][0]['message']['content']
+                   st.success("✅ Result:")
+                   st.write(output)
+
             except Exception as e:
-                st.error(f"Something went wrong: {e}")
+                 st.error(f"Something went wrong: {e}")
+
