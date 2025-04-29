@@ -1,5 +1,7 @@
 import streamlit as st
 import requests
+st.write("DEBUG – Is key loaded?", "OPENROUTER_API_KEY" in st.secrets)
+st.write("DEBUG – Key value:", st.secrets.get("OPENROUTER_API_KEY", "Not found"))
 
 # 🔧 This MUST be the first Streamlit command
 st.set_page_config(page_title="🤖 AI Lead Qualifier Bot (Demo)")
