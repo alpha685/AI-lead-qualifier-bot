@@ -1,8 +1,10 @@
 import streamlit as st
 import requests
 
-# 🔧 MUST BE THE FIRST STREAMLIT COMMAND
 st.set_page_config(page_title="🤖 AI Lead Qualifier Bot (Demo)")
+
+# Load API key
+api_key = st.secrets["openrouter"]["api_key"]
 
 st.title("🤖 AI Lead Qualifier Bot")
 st.write("Enter a LinkedIn lead description, and I’ll qualify them based on your Ideal Customer Profile.")
