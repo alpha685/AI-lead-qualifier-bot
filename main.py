@@ -1,10 +1,16 @@
 import streamlit as st
 import requests
+import json
 
+# ✅ MUST be at the very top before anything else
 st.set_page_config(page_title="🤖 AI Lead Qualifier Bot (Demo)")
 
-# Load API key
-api_key = st.secrets["openrouter"]["api_key"]
+# ✅ Load secret safely
+api_key = st.secrets["openrouter"].get("api_key", None)
+
+if not api_key:
+    st.error("❌ API key not found. Make sure it’s set in Streamlit secrets.")
+    st.stop()
 
 st.title("🤖 AI Lead Qualifier Bot")
 st.write("Enter a LinkedIn lead description, and I’ll qualify them based on your Ideal Customer Profile.")
