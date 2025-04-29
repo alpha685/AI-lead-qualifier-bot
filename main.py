@@ -1,59 +1,51 @@
 import streamlit as st
 import requests
-import os
 
-# ✅ This must be the first Streamlit command
+# 🔧 This MUST be the first Streamlit command
 st.set_page_config(page_title="🤖 AI Lead Qualifier Bot (Demo)")
 
 st.title("🤖 AI Lead Qualifier Bot (Demo)")
 st.write("Enter a potential lead's **email** and **company name**, and this tool will tell you if it's worth qualifying!")
 
-# Get user input
 email = st.text_input("Your email?")
 company = st.text_input("Company name?")
-submit = st.button("Submit")
 
-if submit:
-    with st.spinner("🤖 Thinking..."):
+if st.button("Submit"):
 
-        # ✅ Load your OpenRouter API key securely from secrets
-        api_key = st.secrets["OPENROUTER_API_KEY"]
+    if not email or not company:
+        st.error("Please enter both email and company name.")
+    else:
+        with st.spinner("Thinking..."):
 
-        # ✅ Headers for OpenRouter
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://ai-lead-qualifier-bot.streamlit.app/",
-            "X-Title": "AI Lead Qualifier Bot"
-        }
+            api_key = st.secrets["OPENROUTER_API_KEY"]  # ✅ Make sure your key is in Streamlit secrets
 
-        # ✅ The message we're sending to the model
-        messages = [
-            {
-                "role": "user",
-                "content": f"Is the company '{company}' (lead email: {email}) a good fit for an AI B2B product? Respond with reasoning and a decision: 'Qualify' or 'Disqualify'."
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
             }
-        ]
 
-        # ✅ Request payload for OpenRouter
-        payload = {
-            "model": "mistralai/mixtral-8x7b",
-            "messages": messages
-        }
+            system_prompt = "You are a startup analyst AI that evaluates whether a lead is worth qualifying."
+            user_prompt = f"Here is the email: {email}\nCompany name: {company}\nShould we qualify this lead?"
 
-        try:
-            # Send request
-            response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload)
-            result = response.json()
+            try:
+                response = requests.post(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    headers=headers,
+                    json={
+                        "model": "mistralai/mixtral-8x7b",  # ✅ Valid model name
+                        "messages": [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_prompt}
+                        ]
+                    }
+                )
+                data = response.json()
 
-            # ✅ Check for 'choices' key safely
-            if "choices" in result and len(result["choices"]) > 0:
-                output = result["choices"][0]["message"]["content"]
-                st.success("✅ Here's the analysis:")
-                st.write(output)
-            else:
-                st.error(f"❌ OpenRouter API error: {result.get('error', 'Unknown issue. Check your API key and model.')}")
-                st.json(result)  # Show the whole JSON for debugging
+                if "choices" in data:
+                    st.success("✅ Response from AI:")
+                    st.markdown(data["choices"][0]["message"]["content"])
+                else:
+                    st.error(f"Something went wrong: {data.get('error', {}).get('message', 'Unknown error')}")
 
-        except Exception as e:
-            st.error(f"Something went wrong: {e}")
+            except Exception as e:
+                st.error(f"❌ Error: {e}")
