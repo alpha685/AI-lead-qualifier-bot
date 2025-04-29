@@ -1,53 +1,64 @@
 import streamlit as st
 import requests
-st.write("DEBUG – Is key loaded?", "OPENROUTER_API_KEY" in st.secrets)
-st.write("DEBUG – Key value:", st.secrets.get("OPENROUTER_API_KEY", "Not found"))
 
-# 🔧 This MUST be the first Streamlit command
+# Set page configuration (MUST be the first Streamlit call)
 st.set_page_config(page_title="🤖 AI Lead Qualifier Bot (Demo)")
 
-st.title("🤖 AI Lead Qualifier Bot (Demo)")
-st.write("Enter a potential lead's **email** and **company name**, and this tool will tell you if it's worth qualifying!")
+st.title("🤖 AI Lead Qualifier Bot")
+st.markdown("This AI agent qualifies leads based on company name and email.")
 
-email = st.text_input("Your email?")
-company = st.text_input("Company name?")
+# Input fields
+email = st.text_input("Enter the lead's email:")
+company = st.text_input("Enter the lead's company name:")
+submit = st.button("Qualify Lead")
 
-if st.button("Submit"):
+# Load OpenRouter API key
+api_key = st.secrets.get("OPENROUTER_API_KEY")
+if not api_key:
+    st.error("❌ API key not found. Please set `OPENROUTER_API_KEY` in Streamlit secrets.")
+    st.stop()
 
+if submit:
     if not email or not company:
-        st.error("Please enter both email and company name.")
+        st.warning("Please enter both an email and a company name.")
     else:
-        with st.spinner("Thinking..."):
+        prompt = f"""You are a B2B SaaS startup advisor. Given this lead info:
 
-            api_key = st.secrets["OPENROUTER_API_KEY"]  # ✅ Make sure your key is in Streamlit secrets
+Email: {email}
+Company: {company}
 
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            }
+1. Is this a qualified lead? (Yes/No)
+2. Why or why not?
+3. Give a confidence score (0-100).
+Only reply in this format:
 
-            system_prompt = "You are a startup analyst AI that evaluates whether a lead is worth qualifying."
-            user_prompt = f"Here is the email: {email}\nCompany name: {company}\nShould we qualify this lead?"
+Qualified: Yes/No  
+Reason: [Your explanation]  
+Confidence: [Number between 0-100]
+"""
 
-            try:
-                response = requests.post(
-                    "https://openrouter.ai/api/v1/chat/completions",
-                    headers=headers,
-                    json={
-                        "model": "mistralai/mixtral-8x7b",  # ✅ Valid model name
-                        "messages": [
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": user_prompt}
-                        ]
-                    }
-                )
-                data = response.json()
+        try:
+            response = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "mistralai/mixtral-8x7b",
+                    "messages": [
+                        {"role": "system", "content": "You are a helpful SaaS startup advisor."},
+                        {"role": "user", "content": prompt}
+                    ]
+                }
+            )
 
-                if "choices" in data:
-                    st.success("✅ Response from AI:")
-                    st.markdown(data["choices"][0]["message"]["content"])
-                else:
-                    st.error(f"Something went wrong: {data.get('error', {}).get('message', 'Unknown error')}")
-
-            except Exception as e:
-                st.error(f"❌ Error: {e}")
+            data = response.json()
+            if response.status_code == 200 and "choices" in data:
+                result = data["choices"][0]["message"]["content"]
+                st.success("✅ Lead Analysis")
+                st.markdown(result)
+            else:
+                st.error(f"❌ OpenRouter API error: {data}")
+        except Exception as e:
+            st.error(f"❌ Something went wrong: {str(e)}")
