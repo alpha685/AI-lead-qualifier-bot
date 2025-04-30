@@ -1,59 +1,87 @@
 import streamlit as st
 import requests
+import os
 
-# Set page config (must be first Streamlit call)
-st.set_page_config(page_title="🤖 AI Lead Qualifier Bot (Demo)")
+# Set page config first
+st.set_page_config(page_title="🤖 AI Lead Qualifier Bot (Demo)", layout="centered")
 
-# Load API key
-api_key = st.secrets.get("OPENROUTER_API_KEY", "")
+st.title("AI Lead Qualifier Bot")
+st.write("Enter a LinkedIn lead description, and I’ll qualify them based on your Ideal Customer Profile.")
 
-# Debugging: Display key presence (safe version)
-st.markdown("### AI Lead Qualifier Bot")
-st.write("Enter a LinkedIn lead description, and I’ll qualify them based on your Ideal Customer Profile.\n")
+# Load OpenRouter API key from secrets
+api_key = st.secrets.get("OPENROUTER_API_KEY", None)
 
-st.markdown(f"🔍 **DEBUG – Is key loaded?** {'True' if api_key else 'False'}")
-st.markdown(f"🔍 **DEBUG – Key value:** {'sk-...'+api_key[-6:] if api_key else 'Not Found'}")
+# Debugging
+st.write("🔍 DEBUG – Is key loaded?", api_key is not None)
+st.write("🔍 DEBUG – Key value:", api_key[:10] + "..." if api_key else "Not Found")
 
-# Input form
-user_input = st.text_area("Paste the LinkedIn lead description here")
+# Text input
+user_input = st.text_area("Paste the LinkedIn lead description here", height=200)
 
-if st.button("Qualify Lead"):
+if st.button("🔎 Qualify Lead"):
     if not api_key:
         st.error("❌ API key not found. Make sure it’s set in Streamlit secrets.")
-    elif not user_input:
-        st.warning("Please enter a LinkedIn lead description.")
+    elif not user_input.strip():
+        st.warning("⚠️ Please enter a lead description.")
     else:
+        # Custom ICP Prompt
+        prompt = f"""
+You are an AI assistant helping qualify B2B leads based on an Ideal Customer Profile (ICP).
+
+ICP criteria:
+- Role: Decision makers (VPs, Heads, Directors)
+- Department: Marketing or Growth
+- Company Stage: Series A–C
+- Team size: 10–50
+- Geography: North America or Europe
+- AI Usage: Actively exploring or implementing AI
+
+Given the following lead description, analyze how well this lead matches the ICP.
+
+Respond with:
+- Match Score (0–100)
+- Reasons for the score
+- Red or green flags
+- Suggested action
+
+Lead description:
+\"\"\"
+{user_input}
+\"\"\"
+"""
+
         try:
             response = requests.post(
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers={
                     "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                    "HTTP-Referer": "https://your-app-name.streamlit.app",  # optional but recommended
-                    "X-Title": "AI Lead Qualifier"
+                    "Content-Type": "application/json"
                 },
                 json={
                     "model": "deepseek/deepseek-chat-v3-0324:free",
                     "messages": [
-                        {
-                            "role": "system",
-                            "content": "You are a B2B SaaS lead qualification assistant. Based on a LinkedIn profile summary, determine if the lead is qualified according to typical Ideal Customer Profiles (ICPs) like VP of Marketing, Head of Sales at Series A-C startups in the US/Europe."
-                        },
-                        {
-                            "role": "user",
-                            "content": user_input
-                        }
+                        {"role": "user", "content": prompt}
                     ]
                 },
-                timeout=30
+                timeout=60
             )
 
             if response.status_code == 200:
-                result = response.json()
-                lead_reply = result['choices'][0]['message']['content']
+                response_text = response.json()["choices"][0]["message"]["content"]
                 st.success("✅ Lead Qualification Result:")
-                st.markdown(lead_reply)
+                st.write(response_text)
+
+                # Download button
+                st.download_button(
+                    label="📥 Download Result",
+                    data=response_text,
+                    file_name="lead_qualification_result.txt",
+                    mime="text/plain"
+                )
+
             else:
                 st.error(f"❌ API request failed: {response.status_code} – {response.text}")
+
         except Exception as e:
-            st.error(f"❌ Something went wrong: {str(e)}")
+            st.error(f"❌ Something went wrong: {e}")
+
