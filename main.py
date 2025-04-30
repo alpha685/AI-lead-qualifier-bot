@@ -27,11 +27,11 @@ if st.button("Qualify Lead"):
                 headers={
                     "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
-                    "HTTP-Referer": "https://your-username.streamlit.app",  # Optional but helpful
+                    "HTTP-Referer": "https://ai-lead-qualifier-bot-cpu66vo6yateh62aj6nufl.streamlit.app/",  # Optional but helpful
                     "X-Title": "AI Lead Qualifier"
-                },
+                }
                 json={
-                    "model": "mistralai/mixtral-8x7b",
+                    "model": "deepseek/deepseek-chat-v3-0324:free",
                     "messages": [
                         {"role": "system", "content": "You are an AI lead qualification assistant."},
                         {"role": "user", "content": lead_description}
